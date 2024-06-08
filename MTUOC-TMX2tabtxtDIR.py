@@ -1,5 +1,5 @@
 #    MTUOC-TMX2tabtxtDIR
-#    Copyright (C) 2023  Antoni Oliver
+#    Copyright (C) 2024  Antoni Oliver
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -67,7 +67,10 @@ def TMX2tabtxtDIR(direntrada, fsortida, l1, l2):
                         sl_text=""
                         tl_text=""
                         for tuv in tu.iter('tuv'):
-                            lang=tuv.attrib['{http://www.w3.org/XML/1998/namespace}lang']
+                            try:
+                                lang=tuv.attrib['{http://www.w3.org/XML/1998/namespace}lang']
+                            except:
+                                lang=tuv.attrib['lang']
                             for seg in tuv.iter('seg'):
                                 try:
                                     text=ET.tostring(seg).decode("'utf-8").strip()
