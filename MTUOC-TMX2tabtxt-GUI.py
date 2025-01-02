@@ -1,5 +1,5 @@
 #    MTUOC-TMX2tabtxt-GUI
-#    Copyright (C) 2024  Antoni Oliver
+#    Copyright (C) 2025  Antoni Oliver
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -15,14 +15,15 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
-import lxml
-import lxml.etree as ET
 import sys
 import codecs
 
 import html
 import re
 from ftfy import fix_encoding
+
+import xml.etree.ElementTree as ET
+
 
 from tkinter import *
 from tkinter.ttk import *
@@ -58,75 +59,65 @@ def FT2NT(segment):
     segmentnotags=' '.join(segmentnotags.split()).strip()
     return(segmentnotags)
 
-def TMX2tabtxt():
+     
+
+def TMX2tabtxt(fentrada,fsortida,l1,l2,noTags=False,simpleTags=False,noEntities=False,fixencoding=False):
     try:
-    
-        CBnotagsState=CBnotags.state()
-        argsnoTags=False
-        if "selected" in CBnotagsState:
-            argsnoTags=True
-        CBsimpletagsState=CBsimpletags.state()
-        argssimpleTags=False
-        if "selected" in CBsimpletagsState and not argsnoTags:
-            argssimpleTags=True
-        CBnoentitiesState=CBnoentities.state()
-        argsnoEntities=False
-        if "selected" in CBnoentitiesState:
-            argsnoEntities=True
-        CBfixencodingState=CBfixencoding.state()
-        argsfixencoding=False
-        if "selected" in CBfixencodingState:
-            argsfixencoding=True   
-        fentrada=E1.get()
-        fsortida=E2.get()
-        l1=E3.get().split(" ")
-        l2=E4.get().split(" ")
-    
-        parser = ET.XMLParser(recover=True)
-        tree = ET.parse(fentrada, parser=parser)
-        root = tree.getroot()
-
-        sortida=codecs.open(fsortida,"w",encoding="utf-8")
-
-        for tu in root.iter('tu'):
-            sl_text=""
-            tl_text=""
-            for tuv in tu.iter('tuv'):
-                try:
-                    lang=tuv.attrib['{http://www.w3.org/XML/1998/namespace}lang']
-                except:
-                    lang=tuv.attrib['lang']
-                for seg in tuv.iter('seg'):
-                    try:
-                        text=ET.tostring(seg).decode("'utf-8").strip()
-                        text=lreplace("<seg>","",text)
-                        text=rreplace("</seg>","",text)
-                        if argsnoEntities:
-                            text=html.unescape(text)
-                        if argssimpleTags:
-                            text=FT2ST(text)
-                        if argsnoTags:
-                            text=FT2NT(text)
-                        if argsfixencoding:
-                            text=fix_encoding(text)
-                        if lang in l1: sl_text=text.replace("\n"," ")
-                        elif lang in l2: tl_text=text.replace("\n"," ")
-                    except:
-                        print("ERROR",sys.exc_info())
-                        sl_text=""
-                        tl_text=""
-            
-                
-            if not sl_text=="" and not tl_text=="":
-                try:
-                    cadena=sl_text+"\t"+tl_text
-                    sortida.write(cadena+"\n")
-                except:
-                    pass
-    except:
-        print("ERROR:",sys.exc_info())
-        pass
+        sortida = codecs.open(fsortida, "a", encoding="utf-8")
         
+        # Iteratively parse the XML file
+        context = ET.iterparse(fentrada, events=("start", "end"))
+        _, root = next(context)  # Get the root element
+
+        sl_text = ""
+        tl_text = ""
+        
+        for event, elem in context:
+            if event == "end" and elem.tag == "tu":
+                sl_text = ""
+                tl_text = ""
+
+                for tuv in elem.findall("tuv"):
+                    try:
+                        lang = tuv.attrib.get('{http://www.w3.org/XML/1998/namespace}lang', 
+                                              tuv.attrib.get('lang', ''))
+                        for seg in tuv.findall("seg"):
+                            text = ET.tostring(seg, encoding="unicode").strip()
+                            text = text.replace("<seg>", "").replace("</seg>", "")
+
+                            if noEntities:
+                                text = html.unescape(text)
+                            if simpleTags:
+                                text = FT2ST(text)
+                            if noTags:
+                                text = FT2NT(text)
+                            if fixencoding:
+                                text = fix_encoding(text)
+
+                            if lang in l1:
+                                sl_text = text.replace("\n", " ")
+                            elif lang in l2:
+                                tl_text = text.replace("\n", " ")
+
+                    except Exception as e:
+                        print("ERROR processing tuv/seg:", e, sys.exc_info())
+                        sl_text = ""
+                        tl_text = ""
+
+                if sl_text and tl_text:
+                    try:
+                        cadena = f"{sl_text}\t{tl_text}"
+                        sortida.write(cadena + "\n")
+                    except Exception as e:
+                        print("ERROR writing line:", e, sys.exc_info())
+
+                # Clear the element to free up memory
+                root.clear()
+
+        sortida.close()
+    except Exception as e:
+        print("ERROR processing file:", e, sys.exc_info())
+
         
 ###
 
@@ -144,7 +135,34 @@ def select_output_file():
     E2.xview_moveto(1)
     
 def go():
-    TMX2tabtxt()
+    
+    CBnotagsState=CBnotags.state()
+    noTags=False
+    if "selected" in CBnotagsState:
+        noTags=True
+    CBsimpletagsState=CBsimpletags.state()
+    simpleTags=False
+    if "selected" in CBsimpletagsState and not noTags:
+        simpleTags=True
+    CBnoentitiesState=CBnoentities.state()
+    noEntities=False
+    if "selected" in CBnoentitiesState:
+        noEntities=True
+    CBfixencodingState=CBfixencoding.state()
+    fixencoding=False
+    if "selected" in CBfixencodingState:
+        fixencoding=True   
+    
+    fentrada=E1.get()
+    fsortida=E2.get()
+    l1=E3.get().split(" ")
+    l2=E4.get().split(" ")
+    
+    sortida = codecs.open(fsortida, "w", encoding="utf-8")
+    sortida.close()
+    
+    TMX2tabtxt(fentrada,fsortida,l1,l2,noTags,simpleTags,noEntities,fixencoding)
+
 
 
 top = Tk()

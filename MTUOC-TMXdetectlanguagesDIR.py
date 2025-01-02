@@ -1,5 +1,5 @@
 #    MTUOC-TMXdetectlanguages
-#    Copyright (C) 2024  Antoni Oliver
+#    Copyright (C) 2025  Antoni Oliver
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -15,34 +15,31 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
-import lxml.etree as ET
+import xml.etree.ElementTree as ET
 import sys
 import codecs
 import os
 
 def detectlanguagesDIR(direntrada):
     langs={}
-    parser = ET.XMLParser(recover=True)
     for root, dirs, files in os.walk(direntrada):
         for file in files:
             try:
                 print(file)
                 if file.endswith(".tmx"):
-                    fentrada=os.path.join(root, file)
-                    print(fentrada)
-                    
-                    tree = ET.parse(fentrada, parser=parser)
-                    rootT = tree.getroot()
-
-                    for tu in rootT.iter('tu'):
-                        sl_text=""
-                        tl_text=""
-                        for tuv in tu.iter('tuv'):
-                            try:
-                                lang=tuv.attrib['{http://www.w3.org/XML/1998/namespace}lang']
-                            except:
-                                lang=tuv.attrib['lang']
-                            langs[lang]=1
+                    context = ET.iterparse(file, events=("start", "end"))
+                    root = next(context)  # Get the root element
+                    sl_text = ""
+                    tl_text = ""
+                    langs={}
+                    for event, elem in context:
+                        if event == "end" and elem.tag == "tu":
+                            for tuv in elem.findall("tuv"):
+                                try:
+                                    lang = tuv.attrib.get('{http://www.w3.org/XML/1998/namespace}lang')
+                                    langs[lang]=1        
+                                except:
+                                    pass
 
             except:
                 print("ERROR in ",file,sys.exc_info())

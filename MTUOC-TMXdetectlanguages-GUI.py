@@ -1,5 +1,5 @@
 #    MTUOC-TMXdetectlanguages-GUI
-#    Copyright (C) 2024  Antoni Oliver
+#    Copyright (C) 2025  Antoni Oliver
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
-import lxml.etree as ET
+import xml.etree.ElementTree as ET
 import sys
 import codecs
 
@@ -30,20 +30,20 @@ from tkinter import ttk
 from tkinter import scrolledtext
 
 def detectlanguages(fentrada):
-    parser = ET.XMLParser(recover=True)
-    tree = ET.parse(fentrada, parser=parser)
-    root = tree.getroot()
+    
+    context = ET.iterparse(fentrada, events=("start", "end"))
+    root = next(context)  # Get the root element
+    sl_text = ""
+    tl_text = ""
     langs={}
-    TA1.delete('1.0', END)
-    for tu in root.iter('tu'):
-        sl_text=""
-        tl_text=""
-        for tuv in tu.iter('tuv'):
-            try:
-                lang=tuv.attrib['{http://www.w3.org/XML/1998/namespace}lang']
-            except:
-                lang=tuv.attrib['lang']
-            langs[lang]=1        
+    for event, elem in context:
+        if event == "end" and elem.tag == "tu":
+            for tuv in elem.findall("tuv"):
+                try:
+                    lang = tuv.attrib.get('{http://www.w3.org/XML/1998/namespace}lang')
+                    langs[lang]=1        
+                except:
+                    pass
     for l in langs:
         print(l)
         TA1.insert(INSERT,l+"\n")
